@@ -2,9 +2,9 @@
 
 ## Project Context
 
-**Collaborative Todo List** - A real-time collaborative task management application built with Next.js 15, Supabase, and Tailwind CSS. Features include real-time todo synchronization, cursor tracking, and a Trello-style Kanban board UI.
+**Collaborative Todo List** - A real-time collaborative task management application built with Next.js 15, Prisma, Supabase Realtime, and Tailwind CSS. Features include real-time todo synchronization, cursor tracking, and a modern dark mode Kanban-inspired UI.
 
-- **Tech Stack**: Next.js 15, TypeScript, Supabase (PostgreSQL + Realtime), Zustand, Tailwind CSS v4, Kibo UI
+- **Tech Stack**: Next.js 15, TypeScript, Prisma ORM, PostgreSQL (via Supabase), Supabase Realtime, Zustand, Tailwind CSS v4, Kibo UI
 - **Hosting**: Vercel (frontend) + Supabase (backend)
 - **CI/CD**: GitHub Actions
 
@@ -32,32 +32,33 @@
 ### Data Flow
 
 1. **Local State (Zustand)**: UI state (filters, active user)
-2. **Remote State (Supabase)**: Persistent data (todos, via Realtime)
-3. **Realtime Sync**: `useTodos` hook subscribes to database changes
+2. **API Layer (Next.js)**: Data mutations via `/app/api/todos/*` routes with Prisma ORM
+3. **Database (PostgreSQL)**: Persistent storage via Prisma
+4. **Realtime Sync**: `useTodos` hook subscribes to Supabase Realtime for collaborative features
 
-**Pattern:** Never duplicate data between Zustand and Supabase. Store only derives from fetched todos.
+**Pattern:** Client → API Routes → Prisma → PostgreSQL. Realtime subscriptions handled separately via Supabase.
 
-### Database Schema
+### Database Schema (Prisma)
 
-All todo operations must respect:
+All todo operations use Prisma ORM. Schema defined in `prisma/schema.prisma`:
 
-```sql
-CREATE TABLE todos (
-  id UUID PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  priority TEXT (high|medium|low),
-  status TEXT (todo|in-progress|done),
-  assignee_id UUID,
-  due_date TIMESTAMP,
-  tags TEXT[],
-  created_at TIMESTAMP,
-  order INT,
-  updated_at TIMESTAMP
-);
+```prisma
+model Todo {
+  id        String    @id @default(uuid())
+  title     String    @db.VarChar(255)
+  description String?
+  priority  String    @default("medium") // high|medium|low
+  status    String    @default("todo") // todo|in-progress|done
+  assignee_id String?
+  due_date  DateTime?
+  tags      String[]  @default([])
+  order     Int       @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
 ```
 
-**Critical**: Use exact column names. Snake_case ONLY.
+**Database Operations**: Use API routes in `/app/api/todos` instead of direct client calls. Prisma handles all query generation and type safety.
 
 ## Common Tasks
 
@@ -114,22 +115,30 @@ npm run build            # Full production build
 ├── app/
 │   ├── layout.tsx         # Root layout
 │   ├── page.tsx           # Home page (metadata here)
-│   └── globals.css        # Tailwind + theme
+│   ├── globals.css        # Tailwind + theme
+│   └── api/
+│       └── todos/
+│           └── route.ts   # Todo CRUD API endpoints
 ├── components/
-│   ├── Board.tsx          # Main Kanban board (client)
-│   ├── Header.tsx         # Top header with create button (client)
+│   ├── Board.tsx          # Main board (client)
+│   ├── Header.tsx         # Top header (client)
 │   ├── TodoCard.tsx       # Todo card component (client)
-│   ├── CreateTodoDialog.tsx # Create todo modal (client)
+│   ├── CreateTodoDialog.tsx # Create modal (client)
 │   ├── kibo-ui/           # Kibo UI components
 │   └── ui/                # shadcn/ui base components
 ├── lib/
-│   ├── supabase.ts        # Supabase client + CRUD
+│   ├── prisma.ts          # Prisma ORM singleton
+│   ├── supabase.ts        # Supabase realtime + API wrapper
 │   ├── store.ts           # Zustand state management
 │   ├── types.ts           # TypeScript interfaces
 │   └── utils.ts           # Utility functions
 ├── hooks/
 │   ├── useTodos.ts        # Realtime todos subscription
 │   └── usePresence.ts     # Cursor tracking hook
+├── prisma/
+│   ├── schema.prisma      # Prisma ORM schema
+│   ├── README.md          # Prisma setup guide
+│   └── migrations/        # Database migrations
 ├── .github/workflows/
 │   ├── ci.yml             # Lint + build on PR
 │   └── deploy.yml         # Deploy to Vercel on push main
@@ -145,10 +154,17 @@ npm run build            # Full production build
 3. Environment variables required in Vercel:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `POSTGRES_PRISMA_URL` (for Prisma database)
+
+**Database Setup:**
+- Run migrations before first deploy: `npx prisma migrate deploy`
+- Prisma schema in `prisma/schema.prisma` defines database structure
+- API routes handle all data operations through Prisma ORM
 
 **Before merging to main:**
 - ✅ `npm run lint` passes
 - ✅ `npm run build` passes
+- ✅ Prisma schema is valid
 - ✅ All tests pass
 - ✅ No console errors
 

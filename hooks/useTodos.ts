@@ -50,15 +50,23 @@ export function useTodos() {
     todos,
     isLoading,
     error,
-    addTodo: async (title: string, description?: string) => {
+    addTodo: async (
+      title: string,
+      description?: string,
+      priority?: 'high' | 'medium' | 'low',
+      due_date?: string,
+      tags?: string[]
+    ) => {
       const newTodo: Omit<Todo, 'id' | 'created_at'> = {
         title,
-        description,
-        priority: 'medium',
-        status: 'todo',
-        assignee_id: 'user-1',
-        tags: [],
+        description: description || undefined,
+        priority: priority || 'medium',
+        status: 'todo' as const,
+        assignee_id: undefined,
+        due_date: due_date ? new Date(due_date).toISOString() : undefined,
+        tags: tags || [],
         order: todos.length,
+        updated_at: undefined,
       }
       return createTodo(newTodo)
     },

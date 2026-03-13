@@ -27,4 +27,5 @@ export interface PresenceState {
   userId: string
   name: string
   color: string
+  editingTaskId?: string
 }

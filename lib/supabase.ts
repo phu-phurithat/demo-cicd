@@ -6,7 +6,21 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Subscribe to todos table changes (INSERT, UPDATE, DELETE)
+// Setup presence channel for cursor tracking and online users
+export function setupPresenceChannel(userId: string) {
+  return supabase.channel('presence:board', {
+    config: {
+      presence: {
+        key: userId,
+      },
+      broadcast: {
+        self: true,
+      },
+    },
+  })
+}
+
+// Subscribe to todos changes via Supabase Realtime
 export function subscribeToTodos(
   callback: (payload: { eventType: string; new?: Todo; old?: Todo }) => void
 ) {
@@ -27,65 +41,72 @@ export function subscribeToTodos(
         })
       }
     )
+    .on('broadcast', { event: '*' }, (payload) => {
+      // Handle broadcast events from API routes
+      if (payload.payload?.eventType) {
+        callback({
+          eventType: payload.payload.eventType,
+          new: payload.payload.new as Todo | undefined,
+          old: payload.payload.old as Todo | undefined,
+        })
+      }
+    })
     .subscribe()
 }
 
-// Setup presence channel for cursor tracking and online users
-export function setupPresenceChannel(userId: string) {
-  return supabase.channel(`presence:${userId}`, {
-    config: {
-      presence: {
-        key: userId,
-      },
-      broadcast: {
-        self: true,
-      },
-    },
-  })
-}
+// API-based CRUD operations (using Prisma via Next.js API routes)
 
-// Fetch all todos
 export async function fetchTodos(): Promise<Todo[]> {
-  const { data, error } = await supabase
-    .from('todos')
-    .select('*')
-    .order('order', { ascending: true })
+  const response = await fetch('/api/todos', {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  })
 
-  if (error) throw error
-  return data || []
+  if (!response.ok) {
+    throw new Error(`Failed to fetch todos: ${response.statusText}`)
+  }
+
+  return response.json()
 }
 
-// Create a new todo
 export async function createTodo(todo: Omit<Todo, 'id' | 'created_at'>) {
-  const { data, error } = await supabase
-    .from('todos')
-    .insert([todo])
-    .select()
-    .single()
+  const response = await fetch('/api/todos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(todo),
+  })
 
-  if (error) throw error
-  return data as Todo
+  if (!response.ok) {
+    throw new Error(`Failed to create todo: ${response.statusText}`)
+  }
+
+  return response.json() as Promise<Todo>
 }
 
-// Update a todo
 export async function updateTodo(
   id: string,
   updates: Partial<Omit<Todo, 'id' | 'created_at'>>
 ) {
-  const { data, error } = await supabase
-    .from('todos')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single()
+  const response = await fetch(`/api/todos?id=${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
 
-  if (error) throw error
-  return data as Todo
+  if (!response.ok) {
+    throw new Error(`Failed to update todo: ${response.statusText}`)
+  }
+
+  return response.json() as Promise<Todo>
 }
 
-// Delete a todo
 export async function deleteTodo(id: string) {
-  const { error } = await supabase.from('todos').delete().eq('id', id)
+  const response = await fetch(`/api/todos?id=${id}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  })
 
-  if (error) throw error
+  if (!response.ok) {
+    throw new Error(`Failed to delete todo: ${response.statusText}`)
+  }
 }
