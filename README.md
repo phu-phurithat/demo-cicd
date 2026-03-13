@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Collaborative Todo List
 
-## Getting Started
+A real-time collaborative todo application built with Next.js, Supabase, and Kibo UI. Features real-time task synchronization and cursor tracking across multiple users.
 
-First, run the development server:
+## Features
+
+- ✅ **Real-time Collaboration**: Todos sync instantly across all connected users via Supabase Realtime
+- 👥 **Cursor Tracking**: See other users' cursor positions and names in real-time
+- 🎨 **Trello-Style UI**: Clean Kanban board layout with three columns (To Do, In Progress, Done)
+- 📱 **Responsive Design**: Works on desktop and mobile devices
+- 🔐 **Row-Level Security**: Supabase RLS policies protect user data
+- ⚡ **Server Components**: Optimized with Vercel React best practices
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router) + TypeScript
+- **UI**: Kibo UI (shadcn/ui) + Tailwind CSS v4
+- **Backend**: Supabase PostgreSQL + Realtime
+- **State**: Zustand + Supabase
+- **Hosting**: Vercel + Supabase
+- **CI/CD**: GitHub Actions
+
+## Quick Start
+
+### Prerequisites
+- Node.js 20+
+- Supabase account (free at [supabase.com](https://supabase.com))
+
+### 1. Setup
+
+```bash
+npm install
+```
+
+### 2. Create Supabase Project
+
+1. Create free project at [supabase.com](https://supabase.com)
+2. Copy project URL and anon key
+
+### 3. Configure Environment
+
+Create `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 4. Setup Database
+
+In Supabase SQL Editor, run:
+
+```sql
+CREATE TABLE todos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT,
+  priority TEXT DEFAULT 'medium' CHECK (priority IN ('high', 'medium', 'low')),
+  status TEXT DEFAULT 'todo' CHECK (status IN ('todo', 'in-progress', 'done')),
+  assignee_id UUID,
+  due_date TIMESTAMP,
+  tags TEXT[] DEFAULT '{}',
+  created_at TIMESTAMP DEFAULT now(),
+  "order" INT DEFAULT 0,
+  updated_at TIMESTAMP DEFAULT now()
+);
+
+ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow all authenticated users to view todos"
+  ON todos FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Allow authenticated users to manage todos"
+  ON todos FOR ALL USING (auth.role() = 'authenticated');
+
+ALTER PUBLICATION supabase_realtime ADD TABLE todos;
+```
+
+### 5. Run
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev        # Development server
+npm run build      # Build for production
+npm run lint       # Lint with ESLint
+npm run typecheck  # Type check
+npm run test       # Run tests
+```
 
-## Learn More
+## Deployment
 
-To learn more about Next.js, take a look at the following resources:
+### Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Connect GitHub repo to Vercel
+2. Add environment variables
+3. Deploy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### GitHub Actions
 
-## Deploy on Vercel
+Requires secrets:
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT

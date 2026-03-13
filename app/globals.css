@@ -1,8 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+
+/* Trello-like color theme */
+:root {
+  --trello-blue: #0052cc;
+  --trello-blue-light: #0079bf;
+  --trello-board-bg: #0079bf;
+  --trello-card-bg: #ffffff;
+  --trello-column-bg: #ebecf0;
+  --trello-text: #172b4d;
+  --trello-accent: #0052cc;
+}
 
 @theme inline {
   --color-background: var(--background);
