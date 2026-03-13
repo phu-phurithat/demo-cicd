@@ -51,12 +51,12 @@ export function useTodos() {
     isLoading,
     error,
     addTodo: async (title: string, description?: string) => {
-      const newTodo: Omit<Todo, 'id' | 'createdAt'> = {
+      const newTodo: Omit<Todo, 'id' | 'created_at'> = {
         title,
         description,
         priority: 'medium',
         status: 'todo',
-        assigneeId: 'user-1',
+        assignee_id: 'user-1',
         tags: [],
         order: todos.length,
       }

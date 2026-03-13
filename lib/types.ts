@@ -7,11 +7,12 @@ export interface Todo {
   description?: string
   priority: Priority
   status: Status
-  assigneeId: string
-  dueDate?: string
+  assignee_id?: string
+  due_date?: string
   tags: string[]
-  createdAt: string
+  created_at: string
   order: number
+  updated_at?: string
 }
 
 export interface User {

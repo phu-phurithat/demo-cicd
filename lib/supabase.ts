@@ -56,7 +56,7 @@ export async function fetchTodos(): Promise<Todo[]> {
 }
 
 // Create a new todo
-export async function createTodo(todo: Omit<Todo, 'id' | 'createdAt'>) {
+export async function createTodo(todo: Omit<Todo, 'id' | 'created_at'>) {
   const { data, error } = await supabase
     .from('todos')
     .insert([todo])
@@ -70,7 +70,7 @@ export async function createTodo(todo: Omit<Todo, 'id' | 'createdAt'>) {
 // Update a todo
 export async function updateTodo(
   id: string,
-  updates: Partial<Omit<Todo, 'id' | 'createdAt'>>
+  updates: Partial<Omit<Todo, 'id' | 'created_at'>>
 ) {
   const { data, error } = await supabase
     .from('todos')

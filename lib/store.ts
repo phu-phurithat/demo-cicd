@@ -4,7 +4,7 @@ import type { Todo } from './types'
 interface FilterState {
   status?: string
   priority?: string
-  assigneeId?: string
+  assignee_id?: string
 }
 
 interface TodoStore {
@@ -80,7 +80,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
     return todos.filter((todo) => {
       if (filters.status && todo.status !== filters.status) return false
       if (filters.priority && todo.priority !== filters.priority) return false
-      if (filters.assigneeId && todo.assigneeId !== filters.assigneeId) return false
+      if (filters.assignee_id && todo.assignee_id !== filters.assignee_id) return false
       return true
     })
   },

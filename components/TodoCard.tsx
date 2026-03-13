@@ -55,9 +55,9 @@ export function TodoCard({ todo, onDelete, onStatusChange }: TodoCardProps) {
             <span className="text-xs font-medium px-2 py-1 bg-gray-100 text-gray-700 rounded">
               {priorityIcons[todo.priority]} {todo.priority}
             </span>
-            {todo.dueDate && (
+            {todo.due_date && (
               <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                {new Date(todo.dueDate).toLocaleDateString('en-US', {
+                {new Date(todo.due_date).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
                 })}
