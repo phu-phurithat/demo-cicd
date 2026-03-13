@@ -1,14 +1,16 @@
-import { Suspense } from 'react'
 import { Header } from '@/components/Header'
 import { Board } from '@/components/Board'
+
+export const metadata = {
+  title: 'Collaborative Todo Board',
+  description: 'Real-time collaborative task management with Supabase',
+}
 
 export default function Home() {
   return (
     <>
       <Header />
-      <Suspense fallback={<div className="flex items-center justify-center h-96 text-white">Loading board...</div>}>
-        <Board />
-      </Suspense>
+      <Board />
     </>
   )
 }
