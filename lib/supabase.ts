@@ -41,16 +41,6 @@ export function subscribeToTodos(
         })
       }
     )
-    .on('broadcast', { event: '*' }, (payload) => {
-      // Handle broadcast events from API routes
-      if (payload.payload?.eventType) {
-        callback({
-          eventType: payload.payload.eventType,
-          new: payload.payload.new as Todo | undefined,
-          old: payload.payload.old as Todo | undefined,
-        })
-      }
-    })
     .subscribe()
 }
 
