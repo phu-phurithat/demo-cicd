@@ -12,9 +12,12 @@ export function usePresence(userId: string, userName: string, userColor: string)
   const editingTaskIdRef = useRef<string | null>(null)
   const cursorUpdateRef = useRef<NodeJS.Timeout | null>(null)
   const lastCursorRef = useRef<{ x: number; y: number } | null>(null)
+  const presenceChannelRef = useRef<ReturnType<typeof setupPresenceChannel> | null>(null)
+  const isSubscribedRef = useRef(false)
 
   useEffect(() => {
     const presenceChannel = setupPresenceChannel(userId)
+    presenceChannelRef.current = presenceChannel
     let syncTimer: NodeJS.Timeout
 
     const updateOthers = () => {
@@ -31,6 +34,7 @@ export function usePresence(userId: string, userName: string, userColor: string)
       .on('presence', { event: 'leave' }, updateOthers)
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          isSubscribedRef.current = true
           await presenceChannel.track({
             userId,
             name: userName,
@@ -48,6 +52,8 @@ export function usePresence(userId: string, userName: string, userColor: string)
 
     return () => {
       presenceChannel.unsubscribe()
+      isSubscribedRef.current = false
+      presenceChannelRef.current = null
       if (syncTimer) clearInterval(syncTimer)
     }
   }, [userId, userName, userColor])
@@ -59,12 +65,17 @@ export function usePresence(userId: string, userName: string, userColor: string)
     // Don't show cursor if editing a task
     if (editingTaskIdRef.current) return
     
+    // Wait for subscription before pushing
+    if (!isSubscribedRef.current || !presenceChannelRef.current) return
+    
     // If throttle is already pending, wait for it
     if (cursorUpdateRef.current) return
     
     // Immediately send first update, then throttle subsequent ones
     const sendCursorUpdate = async () => {
-      const presenceChannel = setupPresenceChannel(userId)
+      const presenceChannel = presenceChannelRef.current
+      if (!presenceChannel) return
+      
       const cursor = lastCursorRef.current
       if (cursor) {
         await presenceChannel.track({
@@ -88,7 +99,11 @@ export function usePresence(userId: string, userName: string, userColor: string)
 
   const setEditingTask = async (taskId: string | null) => {
     editingTaskIdRef.current = taskId
-    const presenceChannel = setupPresenceChannel(userId)
+    
+    // Wait for subscription before pushing
+    if (!isSubscribedRef.current || !presenceChannelRef.current) return
+    
+    const presenceChannel = presenceChannelRef.current
     
     // When entering edit mode: clear cursor, set editingTaskId
     // When exiting edit mode: clear editingTaskId but DON'T set cursor (let setSelfCursor handle cursor resume)
