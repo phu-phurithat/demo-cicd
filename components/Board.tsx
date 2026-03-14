@@ -14,28 +14,28 @@ export function Board() {
   const { deleteTodo, updateTodo: updateTodoAPI } = useTodos()
   const { getFilteredTodos, updateTodo: updateTodoLocal } = useTodoStore()
   
-  // Initialize with actual values from sessionStorage after hydration
-  const [userId] = useState(() => {
-    const stored = sessionStorage.getItem('boardUserId')
-    if (stored) return stored
-    const id = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+  // Initialize with placeholder values, set real values in useEffect after hydration
+  const [userId, setUserId] = useState('user-placeholder')
+  const [userName, setUserName] = useState('User')
+  const [isHydrated, setIsHydrated] = useState(false)
+  
+  // Only initialize sessionStorage on the client side after hydration
+  useEffect(() => {
+    const id = sessionStorage.getItem('boardUserId') || `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
     sessionStorage.setItem('boardUserId', id)
-    return id
-  })
-
-  const [userName] = useState(() => {
-    const stored = sessionStorage.getItem('boardUserName')
-    if (stored) return stored
-    const name = getOrGenerateUserName()
+    setUserId(id) // eslint-disable-line
+    
+    const name = sessionStorage.getItem('boardUserName') || getOrGenerateUserName()
     sessionStorage.setItem('boardUserName', name)
-    return name
-  })
+    setUserName(name)
+    setIsHydrated(true)
+  }, [])
   
   // Get deterministic color based on userId (ensures no duplicate colors)
   const userColor = getColorForUserId(userId)
   
-  // Only call usePresence once userId is set
-  const { others, isConnected, setSelfCursor, setEditingTask } = usePresence(userId, userName, userColor)
+  // Only call usePresence once hydrated
+  const { others, isConnected, setSelfCursor, setEditingTask } = usePresence(isHydrated ? userId : '', isHydrated ? userName : '', userColor)
   
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
