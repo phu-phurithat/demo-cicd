@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import '@testing-library/jest-dom'
 import { describe, it, expect } from 'vitest'
 import { TodoCard } from '../TodoCard'
 import type { Todo } from '@/lib/types'
@@ -10,9 +11,9 @@ describe('TodoCard', () => {
     description: 'Test description',
     priority: 'high',
     status: 'todo',
-    assigneeId: 'user-1',
+    assignee_id: 'user-1',
     tags: ['work'],
-    createdAt: new Date().toISOString(),
+    created_at: new Date().toISOString(),
     order: 0,
   }
 
