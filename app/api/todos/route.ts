@@ -3,6 +3,11 @@ import { supabase } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+interface TodoChangePayload {
+  new: Record<string, unknown> | null
+  old: Record<string, unknown> | null
+}
+
 // GET /api/todos - Fetch all todos
 export async function GET() {
   try {
@@ -17,7 +22,7 @@ export async function GET() {
 }
 
 // Helper to broadcast realtime event
-async function broadcastTodoChange(eventType: 'INSERT' | 'UPDATE' | 'DELETE', payload: any) {
+async function broadcastTodoChange(eventType: 'INSERT' | 'UPDATE' | 'DELETE', payload: TodoChangePayload) {
   try {
     await supabase.channel('todos').send({
       type: 'broadcast',

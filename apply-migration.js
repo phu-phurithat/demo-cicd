@@ -1,8 +1,11 @@
 #!/usr/bin/env node
-require('dotenv').config({ path: '.env' });
-const { PrismaClient } = require('@prisma/client');
-const fs = require('fs');
-const path = require('path');
+import 'dotenv/config.js';
+import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const migrationPath = path.join(__dirname, 'prisma/migrations/0_init/migration.sql');
 const sql = fs.readFileSync(migrationPath, 'utf-8');

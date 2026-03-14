@@ -2,7 +2,16 @@
 
 ## Project Context
 
-**Collaborative Todo List** - A real-time collaborative task management application built with Next.js 15, Prisma, Supabase Realtime, and Tailwind CSS. Features include real-time todo synchronization, cursor tracking, and a modern dark mode Kanban-inspired UI.
+**Collaborative Todo List** - A real-time collaborative task management application built with Next.js 15, Prisma, Supabase Realtime, and Tailwind CSS. Features include real-time todo synchronization, cursor tracking with smooth animation, task-specific editing indicators, and a modern dark mode Kanban-inspired UI.
+
+**Current Status:**
+- ✅ Real-time todo sync with optimistic updates (instant UI feedback)
+- ✅ Cursor tracking with smooth 500ms ease-out animation
+- ✅ Task-specific editing indicators (amber "Editing: Name" badge)
+- ✅ Hydration-safe SSR rendering (no server/client mismatch)
+- ✅ Dual-layer throttling (10ms UI + 100ms network = smooth motion)
+- ✅ Unique user IDs per tab with deterministic colors
+- ✅ Timezone-aware date handling
 
 - **Tech Stack**: Next.js 15, TypeScript, Prisma ORM, PostgreSQL (via Supabase), Supabase Realtime, Zustand, Tailwind CSS v4, Kibo UI
 - **Hosting**: Vercel (frontend) + Supabase (backend)
@@ -20,6 +29,21 @@
 
 4. **One component per file** - Each component gets its own file. Keep files focused and under 200 lines when possible.
 
+5. **Hydration Safety (SSR Critical)** - Avoid server/client mismatches:
+   - ❌ DON'T: Use `typeof window !== 'undefined'` in state initializers
+   - ❌ DON'T: Use `Math.random()`, `Date.now()`, or `sessionStorage` in state initializers
+   - ❌ DON'T: Use locale-dependent formatting like `toLocaleDateString()` without checks
+   - ✅ DO: Defer all client-only logic (random, sessionStorage, locale) to `useEffect`
+   - ✅ DO: Initialize state with placeholder values, update in useEffect
+   - ✅ DO: Use utility functions like `formatDateWithTimezone()` for consistent formatting
+
+6. **Presence System (usePresence Hook)** - Cursor tracking optimizations:
+   - Use **refs** (`editingTaskIdRef`) instead of state for values needed in closures
+   - Implement **dual-layer throttling**: 10ms UI throttle + 100ms network throttle
+   - Store last cursor position in `lastCursorRef` to avoid losing position on quick updates
+   - When exiting edit mode, restore cursor position from `lastCursorRef`
+   - Cursor animation: 500ms ease-out (natural deceleration, not jerky)
+
 ## Architecture Decisions
 
 ### Component Boundaries
@@ -35,8 +59,29 @@
 2. **API Layer (Next.js)**: Data mutations via `/app/api/todos/*` routes with Prisma ORM
 3. **Database (PostgreSQL)**: Persistent storage via Prisma
 4. **Realtime Sync**: `useTodos` hook subscribes to Supabase Realtime for collaborative features
+5. **Presence System** (`usePresence` hook):
+   - Tracks other users' cursors and editing states
+   - Uses Supabase Presence API for ephemeral user session data
+   - Single shared presence channel `'presence:board'` for all users
+   - Broadcasts: `{ userId, name, color, cursor: {x, y}, editingTaskId }`
+   - Cursor updates throttled: 10ms UI layer + 100ms network layer (batching)
+   - Editing state: When user opens edit dialog → broadcasts `editingTaskId`, hides cursor
+   - 1-second polling for robust presence state sync
 
-**Pattern:** Client → API Routes → Prisma → PostgreSQL. Realtime subscriptions handled separately via Supabase.
+**Pattern:** Client → API Routes → Prisma → PostgreSQL. Realtime subscriptions + Presence handled separately via Supabase.
+
+### Cursor Tracking & Smooth Motion
+
+**Animation Stack:**
+1. **Board.tsx**: Maps `others.cursor` positions to CSS `left`/`top` with `transition-all duration-500 ease-out`
+2. **usePresence.ts**: Throttles updates to match animation curve (100ms network batches → matches 500ms animation)
+3. **Result**: Smooth gliding cursor motion, no jumps or stutters
+
+**Key Values (DO NOT CHANGE WITHOUT TESTING):**
+- Cursor animation: `duration-500 ease-out` (feels natural, not robotic)
+- UI throttle: `10ms` (captures frequent mouse moves without lag)
+- Network throttle: `100ms` (batches updates to match animation rhythm)
+- Presence poll: `1000ms` (syncs active count, doesn't need to be frequent)
 
 ### Database Schema (Prisma)
 
@@ -97,6 +142,10 @@ npm run build            # Full production build
 - Keep components focused on single responsibility
 - Test with real Supabase project (not mocks)
 - Update both frontend types AND Supabase schema when changing data structure
+- **Defer client-only logic to useEffect** (random, sessionStorage, locale)
+- **Use refs for closure-dependent values** in hooks (editingTaskIdRef, not editingTaskId state)
+- **Use formatDateWithTimezone()** for consistent date display across locales
+- **Animate cursor smoothly** - maintain 500ms ease-out timing for natural motion
 
 ### ❌ DON'T
 
@@ -107,6 +156,10 @@ npm run build            # Full production build
 - Mock Supabase in tests (use real database)
 - Add features beyond what was requested
 - Change TypeScript config without asking
+- **Use client-only logic in state initializers** (causes hydration mismatches)
+- **Use toLocaleDateString() directly** (varies by browser locale - use formatDateWithTimezone)
+- **Use state instead of refs** for values in throttle/batching functions
+- **Change cursor animation timing** without testing smooth motion in multiple browsers
 
 ## File Structure
 
@@ -175,3 +228,37 @@ npm run build            # Full production build
 3. **Verify field names** - 90% of bugs are snake_case vs camelCase mismatches
 4. **Test with real Supabase** - never use mocks
 5. **Ask me** if you're unsure about architecture or requirements
+
+## Troubleshooting
+
+### Hydration Mismatch Errors
+**Symptom:** "Hydration failed because the server rendered text didn't match the client"
+- **Cause**: `typeof window`, `sessionStorage`, `Math.random()`, or `Date.now()` in state initializers
+- **Fix**: Move to `useEffect`. Initialize state with placeholder, update after mount
+- **Example**: `const [userId, setUserId] = useState('placeholder'); useEffect(() => { setUserId(actual); }, [])`
+
+### Cursor Disappears on Edit
+**Symptom:** Cursor vanishes when opening edit dialog
+- **Cause**: `setEditingTask` clears cursor without restoring position on close
+- **Fix**: Use `lastCursorRef.current` to restore cursor position when exiting edit mode
+- **Code**: In `setEditingTask`, set `cursor: lastCursorRef.current` when `taskId === null`
+
+### Cursor Motion Too Jerky/Rough
+**Symptom:** Cursor jumps instead of smoothly gliding
+- **Cause**: `ease-linear` or `duration-300` too short, or UI throttle doesn't match network throttle
+- **Fix**: Use `ease-out` + `duration-500` on cursor div, `100ms` network throttle in usePresence
+- **Test**: Move cursor in one tab, watch smooth gliding in another tab
+
+### Presence Updates Not Syncing
+**Symptom:** Other users' cursors don't appear or are stale
+- **Cause**: Presence channel not subscribing, or userId not unique per tab
+- **Check**: 
+  - BoardUserId stored and retrieved from sessionStorage correctly
+  - `setupPresenceChannel(userId)` called with consistent userId
+  - Supabase URL/key valid in `.env.local`
+  - Open browser DevTools → Network tab → WebSocket should show wss connection
+
+### Build Fails with TypeScript Errors
+**Symptom:** `npm run build` fails with type errors
+- **Fix**: Run `npm run lint` first to see all issues, then address one by one
+- **Common**: Mismatched types (`string` vs `'todo' | 'in-progress' | 'done'`), unused variables, missing types

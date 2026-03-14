@@ -14,28 +14,22 @@ export function Board() {
   const { deleteTodo, updateTodo: updateTodoAPI } = useTodos()
   const { getFilteredTodos, updateTodo: updateTodoLocal } = useTodoStore()
   
-  // Initialize with placeholder values for hydration, then set real values in useEffect
-  const [userId, setUserId] = useState('user-placeholder')
-  const [userName, setUserName] = useState('User')
-  const [isHydrated, setIsHydrated] = useState(false)
-  
-  // Set actual userId and userName only after client hydration
-  useEffect(() => {
-    let id = sessionStorage.getItem('boardUserId')
-    if (!id) {
-      id = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-      sessionStorage.setItem('boardUserId', id)
-    }
-    setUserId(id)
-    
-    let name = sessionStorage.getItem('boardUserName')
-    if (!name) {
-      name = getOrGenerateUserName()
-      sessionStorage.setItem('boardUserName', name)
-    }
-    setUserName(name)
-    setIsHydrated(true)
-  }, [])
+  // Initialize with actual values from sessionStorage after hydration
+  const [userId] = useState(() => {
+    const stored = sessionStorage.getItem('boardUserId')
+    if (stored) return stored
+    const id = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+    sessionStorage.setItem('boardUserId', id)
+    return id
+  })
+
+  const [userName] = useState(() => {
+    const stored = sessionStorage.getItem('boardUserName')
+    if (stored) return stored
+    const name = getOrGenerateUserName()
+    sessionStorage.setItem('boardUserName', name)
+    return name
+  })
   
   // Get deterministic color based on userId (ensures no duplicate colors)
   const userColor = getColorForUserId(userId)
